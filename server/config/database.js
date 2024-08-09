@@ -1,4 +1,4 @@
-require('dotenv').congig()
+require('dotenv').config()
 const mongoose= require('mongoose')
 
 exports.connect= ()=>{

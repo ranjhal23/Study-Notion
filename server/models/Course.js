@@ -1,7 +1,6 @@
 const mongoose= require('mongoose')
 const User= require('./User')
 const Section= require('./Section')
-
 const courseSchema= new mongoose.Schema({
     courseName:{
         type:String

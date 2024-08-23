@@ -49,9 +49,11 @@ exports.sendOTP= async(req, res)=>{
             success: false,
             message: e.message,
         })
-
     }
-    
-    
-
 }
+
+//signUp
+exports.signUp= async(req, res)=>{
+    //fetch data
+    
+} 

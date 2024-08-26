@@ -55,5 +55,56 @@ exports.sendOTP= async(req, res)=>{
 //signUp
 exports.signUp= async(req, res)=>{
     //fetch data
+    const {
+        firstName, 
+        lastName,
+        email,
+        password,
+        confirmPassword,
+        accountType,
+        contactNumber,
+        otp
+    } = req.body
+    //validate details
+    if(!firstName || !lastName || !email|| !password || !confirmPassword || !otp){
+        return res.status(403).json({
+            success: false,
+            message: "All fields are required"
+        })
+    }
+    //match 2 passwords
+    if(password!==confirmPassword){
+       return res.statis(400).json({
+        success: false,
+        message: 'Passwords do not match'
+       })
+    }
+    //check if existing users
+    const existingUser= await User.findOne({email})
+    if(existingUser){
+        return res.status(400).json({
+            success: false,
+            message: 'User is already registered'
+        })
+    }
+    //find most recent otp
+    const recentOtp= await OTP.find({email}).sort({createdAt:-1}).limit(1);
+    console.log(recentOtp)
+    //validate OTP
+    if(recentOtp.length==0){
+        return res.status(400).json({
+            success: false,
+            message: 'OTP not found',
+        })
+    }
+    else if(otp!==recentOtp){
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid OTP'
+        })
+    }
+
+    //hash password
+    const hashedPassword= await bcrypt 
     
 } 

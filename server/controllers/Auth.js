@@ -1,6 +1,9 @@
 const User= require('../models/User')
 const OTP= require('../models/OTP')
 const otpGenerator= require('otp-generator')
+const bcrypt= require('bcrypt')
+const jwt= require('jsonwebtoken')
+require('dotenv').config()
 
 //send OTP
 exports.sendOTP= async(req, res)=>{
@@ -140,3 +143,124 @@ exports.signUp= async(req, res)=>{
        })
     }
 } 
+
+
+//login
+exports.login= async(req, res)=>{
+    try{
+        //get data
+        const {email, password}= req.body;
+        //validate
+        if(!email ||!password){
+            return res.status(403).json({
+                success: false,
+                message: 'All fields are required'
+            })
+        }
+        //check existing
+        const user= await User.findOne({email}).populate("additionalDetails")
+        if(!user){
+            return res.status(401).json({
+                success: false,
+                message: 'User is not registered'
+            })
+        }
+        //generate jwt, after password matching
+        if(await bcrypt.compare(password, user.password)){
+            const payload={
+                email: user.email,
+                id: user._id,
+                role: user.role
+            }
+            const token= jwt.sign(payload, process.env.JWT_SECRET,{
+                expiresIn: '2h'
+            })
+            user.token= token
+            user.password= undefined
+
+            //create cookie and send response
+            const options={
+                expires: new Date(Date.now() + 3*24*60*60*1000),
+                httpOnly: true
+            }
+            res.cookie("token", token, options).status(200).json({
+                success: true,
+                token, 
+                user,
+                message: 'Logged in successfully'
+            })   
+        }
+        else{
+            return res.status(401).json({
+                success: false,
+                message: 'Password is wrong'
+            })
+        }
+    }catch(e){
+        console.log(e)
+        return res.status(500).json({
+            success: false,
+            message: 'Login failure, please try again'
+        })
+    }
+}
+
+//change password
+exports.changePassword= async(req, res)=>{
+    try{
+    //fetch data
+     const userDetails= await User.findById(req.user.id)
+
+    //get oldpass, newpass, confirmnewpass
+     const{oldPassword, newPassword}= req.body
+
+    //validation
+     const isPasswordMatch= await bcrypt.compare(
+        oldPassword, userDetails.password
+     )
+     if(!isPasswordMatch){
+        return res.status(401).json({
+            success: false,
+            message:'Password is incorrect'
+        })
+     }
+      
+    //update password in db
+     const encryptedPassword= await bcrypt.hash(newPassword, 10)
+     const updatedUserDetails= await User.findByIdAndUpdate(
+        req.user.id, 
+        {password: encryptedPassword},
+        {new: true}
+     )
+    //send mail- pass update
+    try{
+        const emailResponse= await mailSender(
+            updatedUserDetails.email,
+            "Password for your account has been updated",
+            passwordUpdated(
+                updatedUserDetails.email,
+                `Password updated successfully for ${updatedUserDetails.firstName} ${updatedUserDetails.lastName}`
+            )
+        )
+        console.log('Email sent successfully:', emailResponse.response)
+
+    }catch(e){
+      console.log(e)
+        return res.status(500).json({
+            success: false,
+            message: 'Error occured while sending mail'
+        })
+      }
+      //return response
+      return res.status(200).json({
+        success: true,
+        message: 'Password updated successfully'
+    })
+    }catch(e){
+        console.log(e)
+        return res.status(500).json({
+            success: false,
+            message: 'Error while updating password'
+        })
+    }   
+    }  

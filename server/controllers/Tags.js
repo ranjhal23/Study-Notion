@@ -1,4 +1,4 @@
-const Tag= require('../models/tags')
+const Tag= require('../models/Category')
  
 //create tag
 exports.createTag= async(req, res)=>{
